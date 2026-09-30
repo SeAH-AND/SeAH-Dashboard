@@ -1,1 +1,1 @@
-window.LME_STATUS={"checkedAt":"2026-09-30T08:16:13.444Z","ok":true,"changed":true,"dataUpdatedAt":"2026-09-30T08:16:35.316Z","latest":"2026-09-29","fxOk":true,"fxLatest":"2026-09-29","fxSource":"E","eximMessage":"인증키 없음(ECB 환율 사용)"};
+window.LME_STATUS={"checkedAt":"2026-09-30T08:20:19.494Z","ok":true,"changed":true,"dataUpdatedAt":"2026-09-30T08:20:40.515Z","latest":"2026-09-29","fxOk":true,"fxLatest":"2026-09-30","fxSource":"K","eximOk":true,"eximMessage":"과거 매매기준율 채우는 중(2026-09-11까지)"};
