@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LME 알루미늄 대시보드</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪙</text></svg>">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
+<style>
+:root {
+  --bg: #F4F6F8; --surface: #FFFFFF; --ink: #15202B; --muted: #667380; --line: #E1E6EB; --soft: #F0F3F6;
+  --cash: #1F5A96; --fx: #3E8E7E; --stock: #B07A26; --up: #D0342C; --down: #2A62C9; --ok: #2E8B57; --warn: #C98A1B;
+  --radius-lg: 16px; --radius-sm: 8px;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1720; --surface: #17212C; --ink: #E6ECF2; --muted: #93A0AD; --line: #26323F; --soft: #1D2935;
+    --cash: #6FA3DB; --fx: #5FB8A5; --stock: #D9A551; --up: #F0645A; --down: #6A9BEA; --ok: #4FBF83; --warn: #E0A83E;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1720; --surface: #17212C; --ink: #E6ECF2; --muted: #93A0AD; --line: #26323F; --soft: #1D2935;
+  --cash: #6FA3DB; --fx: #5FB8A5; --stock: #D9A551; --up: #F0645A; --down: #6A9BEA; --ok: #4FBF83; --warn: #E0A83E;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: inherit; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased;
+}
+.num { font-variant-numeric: tabular-nums; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 28px 24px 48px; }
+
+header.top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+header.top h1 { font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+header.top .sub { color: var(--muted); font-size: 14px; margin-top: 2px; }
+.status { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
+.dot.warn { background: var(--warn); }
+.dot.err { background: var(--up); }
+.status { flex-wrap: wrap; justify-content: flex-end; }
+.status-text { display: flex; align-items: center; gap: 8px; }
+.status-label { color: var(--ink); }
+
+
+.banner { background: color-mix(in srgb, var(--warn) 14%, var(--surface)); border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent);
+  color: var(--ink); padding: 10px 14px; border-radius: var(--radius-sm); font-size: 14px; margin-bottom: 16px; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); }
+
+.hero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 0; margin-bottom: 16px; overflow: hidden; }
+.hero-main { padding: 28px 32px; }
+.hero-label { color: var(--muted); font-size: 14px; }
+.hero-price { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 6px 0 10px; }
+.hero-price .v { font-size: clamp(44px, 6vw, 64px); font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+.hero-price .u { color: var(--muted); font-size: 15px; font-weight: 500; }
+.chg { font-weight: 600; font-size: 16px; }
+.chg.up { color: var(--up); } .chg.down { color: var(--down); } .chg.flat { color: var(--muted); }
+.chg small { font-weight: 500; font-size: .92em; }
+
+.range { margin-top: 26px; max-width: 460px; }
+.range-head { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+.range-track { position: relative; height: 6px; border-radius: 3px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--down) 45%, var(--soft)), var(--soft) 50%, color-mix(in srgb, var(--up) 45%, var(--soft))); }
+.range-mark { position: absolute; top: 50%; width: 16px; height: 16px; border-radius: 50%; background: var(--surface);
+  border: 4px solid var(--cash); transform: translate(-50%, -50%); transition: left .6s cubic-bezier(.2,.8,.2,1); }
+.range-ends { display: flex; justify-content: space-between; font-size: 13px; margin-top: 8px; }
+.range-ends span { color: var(--muted); }
+.range-ends b { color: var(--ink); font-weight: 600; }
+
+.stats { display: grid; grid-template-columns: 1fr 1fr; border-left: 1px solid var(--line); }
+.stat { padding: 22px 24px; border-bottom: 1px solid var(--line); }
+.stat:nth-child(odd) { border-right: 1px solid var(--line); }
+.stat:nth-last-child(-n+2) { border-bottom: 0; }
+.stat .k { color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.stat .k i { width: 10px; height: 3px; border-radius: 2px; display: inline-block; }
+.stat .v { font-size: 24px; font-weight: 700; margin-top: 4px; letter-spacing: -0.01em; }
+.stat .v small { font-size: 13px; color: var(--muted); font-weight: 500; margin-left: 3px; }
+.stat .d { font-size: 13px; margin-top: 2px; color: var(--muted); }
+.stat .d .chg { font-size: 13px; }
+
+.chart-card { padding: 20px 20px 8px; margin-bottom: 16px; }
+.chart-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 0 4px 8px; }
+.chart-head h2 { font-size: 17px; margin: 0; font-weight: 700; }
+.legend { display: flex; gap: 14px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.tabs { display: inline-flex; background: var(--soft); border-radius: 10px; padding: 3px; gap: 2px; }
+.tabs button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600;
+  padding: 6px 12px; border-radius: 8px; cursor: pointer; }
+.tabs button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.tabs button:focus-visible, .btn:focus-visible { outline: 2px solid var(--cash); outline-offset: 2px; }
+#chart { width: 100%; height: 600px; }
+
+.grid2 { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.table-card { padding: 20px 0 8px; }
+.table-card .th { display: flex; justify-content: space-between; align-items: center; padding: 0 22px 10px; gap: 12px; }
+.table-card h2 { font-size: 17px; margin: 0; font-weight: 700; }
+.table-card p.note { margin: 0; padding: 0 22px 10px; color: var(--muted); font-size: 13px; }
+.scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 9px 22px; text-align: right; white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { color: var(--muted); font-weight: 500; font-size: 13px; border-bottom: 1px solid var(--line); }
+tbody tr + tr td { border-top: 1px solid var(--soft); }
+tbody tr:hover td { background: var(--soft); }
+td .tag { font-size: 12px; color: var(--muted); margin-left: 6px; }
+.btn { border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600;
+  padding: 7px 12px; border-radius: 8px; cursor: pointer; }
+.btn:hover { background: var(--soft); }
+.btn.primary { background: var(--cash); border-color: var(--cash); color: #fff; }
+
+footer { color: var(--muted); font-size: 13px; margin-top: 24px; line-height: 1.7; }
+
+.empty { padding: 56px 32px; text-align: center; }
+.empty h2 { margin: 0 0 8px; font-size: 20px; }
+.empty p { color: var(--muted); margin: 0 auto 20px; max-width: 520px; }
+
+@media (max-width: 900px) {
+  .hero { grid-template-columns: minmax(0, 1fr); }
+  .stats { border-left: 0; border-top: 1px solid var(--line); }
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+  #chart { height: 520px; }
+}
+@media (max-width: 520px) {
+  .wrap { padding: 20px 14px 36px; }
+  .hero-main { padding: 22px 20px; }
+  .stat { padding: 16px 18px; }
+  .stat .v { font-size: 20px; }
+  th, td { padding: 8px 16px; }
+  .tabs button { padding: 6px 9px; }
+}
+@media (prefers-reduced-motion: reduce) { .range-mark { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>LME 알루미늄</h1>
+      <div class="sub" id="asof">데이터를 불러오는 중</div>
+    </div>
+    <div class="status">
+      <div class="status-text" id="status"></div>
+    </div>
+  </header>
+
+  <div id="banner"></div>
+  <main id="app"></main>
+
+  <footer>
+    출처: LME 알루미늄 공식가격(현물가치 = Cash-Settlement)과 LME 재고는 Westmetall. 원/달러 환율은 한국수출입은행 매매기준율을 우선 사용하고, 받지 못한 날은 유럽중앙은행(ECB) 기준환율(Frankfurter API)로 채웁니다. 환율 옆 괄호에 최신 값의 출처가 표시됩니다.
+    가격은 장 마감 종가가 아닌 LME 공식가격이며, 원화 환산값은 같은 날(없으면 직전 영업일) 환율을 곱한 참고값입니다.
+    재고는 LME 발표 시점 때문에 가격보다 하루 늦게 반영될 수 있습니다. 참고용 자료이며, 계약 단가 산정에는 공식 출처를 확인하세요.
+  </footer>
+</div>
+
+<script>
+(() => {
+  const DATA_URL = "data/lme.js";
+  const STATUS_URL = "data/status.js";
+  const POLL_MS = 2 * 60 * 1000; // 2분마다 새 자동 수집 결과가 있는지 확인(작은 상태 파일만 읽음)
+  const RANGES = [["1M", "1개월", 31], ["3M", "3개월", 92], ["6M", "6개월", 183], ["1Y", "1년", 366], ["3Y", "3년", 1096], ["5Y", "5년", 1827], ["ALL", "전체", null]];
+
+  const $ = (s) => document.querySelector(s);
+  const f2 = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const f0 = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+  const fmt = (v, d = 2) => v == null ? "–" : (d ? f2 : f0).format(v);
+  const toDate = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+  const kDate = (s, withYear = true) => { const d = toDate(s); return (withYear ? `${d.getFullYear()}년 ` : "") + `${d.getMonth() + 1}월 ${d.getDate()}일`; };
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  let status = null, rows = [], fxRows = [], rowFx = [], range = "6M", chart = null, lastUpdatedAt = null, demo = false;
+
+  function chgHtml(cur, prev, digits = 2, unit = "") {
+    if (cur == null || prev == null) return `<span class="chg flat">–</span>`;
+    const d = cur - prev, p = prev ? d / prev * 100 : 0;
+    const cls = d > 0 ? "up" : d < 0 ? "down" : "flat";
+    const arrow = d > 0 ? "▲" : d < 0 ? "▼" : "";
+    return `<span class="chg ${cls}">${arrow} ${fmt(Math.abs(d), digits)}${unit} <small>(${d > 0 ? "+" : d < 0 ? "−" : ""}${Math.abs(p).toFixed(2)}%)</small></span>`;
+  }
+
+  // col: 1=cash, 2=3M, 3=stock. 마지막 값과 그 직전 값
+  function lastTwo(col) {
+    const out = [];
+    for (let i = rows.length - 1; i >= 0 && out.length < 2; i--) if (rows[i][col] != null) out.push(rows[i]);
+    return out;
+  }
+
+  // 각 거래일에 쓸 환율: 그날 값이 없으면(유럽 휴일 등) 직전 값 사용
+  function buildRowFx() {
+    rowFx = []; let j = 0, cur = null;
+    for (const r of rows) {
+      while (j < fxRows.length && fxRows[j][0] <= r[0]) cur = fxRows[j++];
+      rowFx.push(cur ? cur[1] : null);
+    }
+  }
+  const krw = (i) => rows[i][1] != null && rowFx[i] != null ? rows[i][1] * rowFx[i] : null;
+  const lastIdx = (fn) => { for (let i = rows.length - 1; i >= 0; i--) if (fn(i) != null) return i; return -1; };
+
+  function monthly() {
+    const map = new Map();
+    rows.forEach((r, i) => {
+      const k = r[0].slice(0, 7);
+      if (!map.has(k)) map.set(k, { cash: [], fx: [], krw: [], stock: null });
+      const m = map.get(k);
+      if (r[1] != null) m.cash.push(r[1]);
+      if (rowFx[i] != null) m.fx.push(rowFx[i]);
+      if (krw(i) != null) m.krw.push(krw(i));
+      if (r[3] != null) m.stock = r[3];
+    });
+    const avg = (a) => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
+    return [...map.entries()].map(([k, m]) => ({ month: k, cash: avg(m.cash), fx: avg(m.fx), krw: avg(m.krw), stock: m.stock, days: m.cash.length }));
+  }
+
+  function renderEmpty(reason) {
+    $("#asof").textContent = "아직 데이터가 없습니다";
+    $("#status").innerHTML = "";
+    $("#app").innerHTML = `
+      <section class="card empty">
+        <h2>표시할 데이터가 없습니다</h2>
+        <p>${reason} GitHub에 올린 경우 Actions 탭에서 "LME 데이터 업데이트"를 한 번 실행하면 몇 분 안에 채워집니다.</p>
+        <button class="btn primary" id="demoBtn">샘플 데이터로 미리보기</button>
+      </section>`;
+    $("#demoBtn").onclick = startDemo;
+  }
+
+  function startDemo() {
+    demo = true;
+    const out = [], fxOut = []; let c = 2350, s = 560000, x = 1180, seed = 7;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647 - 0.5;
+    const d = new Date(); d.setFullYear(d.getFullYear() - 6);
+    const end = new Date(); end.setDate(end.getDate() - 1);
+    while (d <= end) {
+      if (d.getDay() % 6) {
+        c = Math.max(1500, c + rnd() * 38); s = Math.max(150000, s + rnd() * 9000);
+        const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        out.push([iso, +c.toFixed(2), +(c + 20 + rnd() * 30).toFixed(2), Math.round(s)]);
+        x = Math.min(1500, Math.max(1050, x + rnd() * 9 + 0.12)); fxOut.push([iso, +x.toFixed(2)]);
+      }
+      d.setDate(d.getDate() + 1);
+    }
+    rows = out; fxRows = fxOut; buildRowFx(); lastUpdatedAt = new Date().toISOString();
+    $("#banner").innerHTML = `<div class="banner">샘플 데이터입니다. 실제 LME 가격이 아니며 화면 구성을 미리 보기 위한 용도입니다.</div>`;
+    render();
+  }
+
+  function render() {
+    const last = rows.at(-1);
+    const [cCur, cPrev] = lastTwo(1), [sCur, sPrev] = lastTwo(3);
+    const fxCur = fxRows.at(-1), fxPrev = fxRows.at(-2);
+    const ki = lastIdx(krw), kPrevI = ki > 0 ? (() => { for (let i = ki - 1; i >= 0; i--) if (krw(i) != null) return i; return -1; })() : -1;
+    const kCur = ki >= 0 ? krw(ki) : null, kPrev = kPrevI >= 0 ? krw(kPrevI) : null;
+    const fxSrcTip = (status?.eximMessage ? `수출입은행: ${status.eximMessage}` : "").replace(/"/g, "&quot;");
+    const fxHint = status?.fxOk === false
+      ? `<span title="${(status.fxMessage ?? "").replace(/"/g, "&quot;")}">환율을 받지 못했습니다. 다음 확인 때 다시 시도합니다</span>`
+      : status && "fxOk" in status ? "환율 데이터가 비어 있습니다" : "수집 스크립트(fetch.mjs)를 최신으로 바꾼 뒤 수집을 실행하세요";
+
+    // 52주 범위
+    const cutoff = toDate(last[0]); cutoff.setDate(cutoff.getDate() - 365);
+    const yr = rows.filter((r) => r[1] != null && toDate(r[0]) >= cutoff);
+    const lo = yr.reduce((a, r) => r[1] < a[1] ? r : a, yr[0]);
+    const hi = yr.reduce((a, r) => r[1] > a[1] ? r : a, yr[0]);
+    const pos = hi[1] === lo[1] ? 50 : (cCur[1] - lo[1]) / (hi[1] - lo[1]) * 100;
+
+    // 데이터가 충분한 기간 버튼만 표시
+    const spanDays = (toDate(last[0]) - toDate(rows[0][0])) / 86400000;
+    const avail = RANGES.filter(([, , d]) => d == null || spanDays >= d * 0.9);
+    if (!avail.some(([k]) => k === range)) range = avail.length > 1 ? avail.at(-2)[0] : "ALL";
+
+    // 이번 달 평균
+    const months = monthly(), thisMonth = months.at(-1), prevMonth = months.at(-2);
+
+    // 머리글
+    $("#asof").textContent = `${kDate(last[0])} 공식가격 기준`;
+    renderStatus();
+
+    $("#app").innerHTML = `
+      <section class="card hero">
+        <div class="hero-main">
+          <div class="hero-label">현물가치 (LME 공식가격)</div>
+          <div class="hero-price"><span class="v num">${fmt(cCur[1])}</span><span class="u">USD/톤</span></div>
+          <div class="num">${chgHtml(cCur[1], cPrev?.[1])} <span style="color:var(--muted);font-size:14px;margin-left:4px">전 거래일 대비</span></div>
+          <div class="range">
+            <div class="range-head"><span>최근 1년 범위에서 현재 위치</span><span class="num">${pos.toFixed(0)}%</span></div>
+            <div class="range-track" role="img" aria-label="최근 1년 최저 ${fmt(lo[1])}, 최고 ${fmt(hi[1])}, 현재 ${fmt(cCur[1])}">
+              <div class="range-mark" style="left:0%"></div>
+            </div>
+            <div class="range-ends num">
+              <div><span>최저</span> <b>${fmt(lo[1])}</b> <span>${kDate(lo[0], false)}</span></div>
+              <div><span>최고</span> <b>${fmt(hi[1])}</b> <span>${kDate(hi[0], false)}</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="stats">
+          <div class="stat">
+            <div class="k"><i style="background:var(--fx)"></i>원/달러 환율${fxCur ? ` <span title="${fxSrcTip}">(${FX_SRC[fxCur[2] ?? "E"]})</span>` : ""}</div>
+            <div class="v num">${fmt(fxCur?.[1])}<small>원</small></div>
+            <div class="d num">${fxCur ? chgHtml(fxCur[1], fxPrev?.[1], 2, "원") + ` <span>${kDate(fxCur[0], false)}</span>` : fxHint}</div>
+          </div>
+          <div class="stat">
+            <div class="k">원화 환산 현물가치</div>
+            <div class="v num">${kCur == null ? "–" : f0.format(kCur)}<small>원/톤</small></div>
+            <div class="d num">${kCur == null ? (fxCur ? "" : "환율이 들어오면 표시됩니다") : chgHtml(kCur, kPrev, 0, "원") + ` <span>kg당 ${f0.format(kCur / 1000)}원</span>`}</div>
+          </div>
+          <div class="stat">
+            <div class="k"><i style="background:var(--stock)"></i>LME 재고</div>
+            <div class="v num">${fmt(sCur?.[3], 0)}<small>톤</small></div>
+            <div class="d num">${chgHtml(sCur?.[3], sPrev?.[3], 0, "톤")}${sCur ? ` <span>${kDate(sCur[0], false)}</span>` : ""}</div>
+          </div>
+          <div class="stat">
+            <div class="k">${Number(thisMonth.month.slice(5))}월 현물가치 평균</div>
+            <div class="v num">${fmt(thisMonth.cash)}</div>
+            <div class="d num">이번 달 ${thisMonth.days}거래일 평균, 전월 ${fmt(prevMonth?.cash)}</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card chart-card">
+        <div class="chart-head">
+          <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+            <h2>가격, 재고, 환율 추이</h2>
+            <div class="legend">
+              <span><i style="background:var(--cash)"></i>현물가치</span>
+              <span><i style="background:var(--stock)"></i>재고</span>
+              <span><i style="background:var(--fx)"></i>환율</span>
+            </div>
+          </div>
+          <div class="tabs" role="group" aria-label="기간">
+            ${avail.map(([k, l]) => `<button type="button" data-r="${k}" aria-pressed="${k === range}">${l}</button>`).join("")}
+          </div>
+        </div>
+        <div id="chart"></div>
+      </section>
+
+      <div class="grid2">
+        <section class="card table-card">
+          <div class="th"><h2>월평균</h2></div>
+          <p class="note">LME 월평균은 알루미늄 계약 단가의 기준으로 많이 쓰입니다.</p>
+          <div class="scroll"><table class="num">
+            <thead><tr><th>월</th><th>현물가치 평균</th><th>전월 대비</th><th>평균 환율</th><th>원화 환산 평균 (원/톤)</th><th>월말 재고</th></tr></thead>
+            <tbody>${months.slice(-12).reverse().map((m, i, arr) => {
+              const prev = months[months.length - 2 - i];
+              return `<tr><td>${m.month.replace("-", ".")}${i === 0 ? '<span class="tag">진행 중</span>' : ""}</td>
+                <td>${fmt(m.cash)}</td><td>${prev ? chgPct(m.cash, prev.cash) : "–"}</td>
+                <td>${fmt(m.fx)}</td><td>${m.krw == null ? "–" : f0.format(m.krw)}</td><td>${fmt(m.stock, 0)}</td></tr>`;
+            }).join("")}</tbody>
+          </table></div>
+        </section>
+
+        <section class="card table-card">
+          <div class="th"><h2>최근 거래일</h2><button class="btn" id="csvBtn">전체 CSV 받기</button></div>
+          <div class="scroll"><table class="num">
+            <thead><tr><th>일자</th><th>현물가치</th><th>전일 대비</th><th>환율</th><th>재고</th></tr></thead>
+            <tbody>${Array.from({ length: Math.min(13, rows.length) }, (_, k) => rows.length - 1 - k).map((i) => {
+              const r = rows[i], p = rows[i - 1];
+              return `<tr><td>${r[0].replaceAll("-", ".")}</td><td>${fmt(r[1])}</td>
+                <td>${p ? chgPct(r[1], p[1]) : "–"}</td><td>${fmt(rowFx[i])}</td><td>${fmt(r[3], 0)}</td></tr>`;
+            }).join("")}</tbody>
+          </table></div>
+        </section>
+      </div>`;
+
+    requestAnimationFrame(() => { const m = $(".range-mark"); if (m) m.style.left = `${Math.min(100, Math.max(0, pos))}%`; });
+    document.querySelectorAll(".tabs button").forEach((b) => b.onclick = () => setRange(b.dataset.r));
+    $("#csvBtn").onclick = downloadCsv;
+    drawChart();
+  }
+
+  const FX_SRC = { K: "수출입은행 매매기준율", E: "ECB 기준환율", F: "예비 출처" };
+  const kst = (iso) => new Date(iso).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+
+  function renderStatus() {
+    if (!rows.length) return;
+    const staleDays = (Date.now() - toDate(rows.at(-1)[0]).getTime()) / 86400000;
+    let dot = "", text;
+    if (demo) text = "샘플 데이터";
+    else if (status?.checkedAt) {
+      const failed = status.ok === false;
+      const late = (Date.now() - new Date(status.checkedAt).getTime()) > 3 * 3600 * 1000;
+      dot = failed ? "err" : (late || staleDays > 5) ? "warn" : "";
+      text = `마지막 확인 ${kst(status.checkedAt)}` + (failed ? ", 수집 실패" : "");
+    } else {
+      dot = staleDays > 5 ? "warn" : "";
+      text = `마지막 반영 ${kst(lastUpdatedAt)}`;
+    }
+    const lines = ["자동 수집이 실제로 실행된 시각입니다"];
+    if (status?.ok === false) lines.push(`오류: ${status.message ?? ""}`);
+    if (status?.lmeUpdatedAt) lines.push(`LME 가격·재고 갱신: ${kst(status.lmeUpdatedAt)}`);
+    if (status?.fxUpdatedAt) lines.push(`환율 갱신: ${kst(status.fxUpdatedAt)}`);
+    const tip = lines.join("\n");
+    $("#status").innerHTML = `<span class="dot ${dot}"></span><span class="status-label" title="${tip.replace(/"/g, "&quot;")}">${text}</span>`;
+  }
+
+  function chgPct(cur, prev) {
+    if (cur == null || prev == null || !prev) return "–";
+    const p = (cur - prev) / prev * 100;
+    const cls = p > 0 ? "up" : p < 0 ? "down" : "flat";
+    return `<span class="chg ${cls}" style="font-size:14px;font-weight:500">${p > 0 ? "+" : p < 0 ? "−" : ""}${Math.abs(p).toFixed(2)}%</span>`;
+  }
+
+  function drawChart() {
+    const el = $("#chart");
+    if (chart) chart.dispose();
+    chart = echarts.init(el, null, { renderer: "canvas" });
+    const ink = css("--ink"), muted = css("--muted"), line = css("--line"), soft = css("--soft");
+    const ts = rows.map((r) => toDate(r[0]).getTime());
+    const byTs = new Map(ts.map((t, i) => [t, i]));
+    const series = (col) => rows.map((r, i) => [ts[i], r[col]]);
+    const axisCommon = { axisLine: { lineStyle: { color: line } }, axisTick: { show: false }, axisLabel: { color: muted, fontSize: 12 } };
+    const narrow = el.clientWidth < 560;
+
+    const L = narrow ? 46 : 64, R = narrow ? 8 : 16;
+    const fxSeries = rows.map((r, i) => [ts[i], rowFx[i]]);
+    const yCommon = { type: "value", scale: true, ...axisCommon, axisLine: { show: false }, splitLine: { lineStyle: { color: soft } } };
+    const sub = (text, top) => ({ text, left: L - 4, top, textStyle: { fontSize: 12, fontWeight: 500, color: muted } });
+
+    chart.setOption({
+      animation: false,
+      textStyle: { fontFamily: getComputedStyle(document.body).fontFamily },
+      title: [sub("현물가치 (USD/톤)", 0), sub("LME 재고 (톤)", "55%"), sub("원/달러 환율", "77%")],
+      grid: [
+        { left: L, right: R, top: 22, height: "44%" },
+        { left: L, right: R, top: "60%", height: "13%" },
+        { left: L, right: R, top: "82%", bottom: 28 },
+      ],
+      axisPointer: { link: [{ xAxisIndex: "all" }], lineStyle: { color: muted, type: "dashed" } },
+      tooltip: {
+        trigger: "axis", backgroundColor: css("--surface"), borderColor: line, textStyle: { color: ink, fontSize: 13 },
+        formatter: (ps) => {
+          const i = byTs.get(ps[0].value[0]);
+          if (i == null) return "";
+          const r = rows[i], k = krw(i);
+          return `<div style="font-weight:600;margin-bottom:4px">${kDate(r[0])}</div>` +
+            `<div style="display:grid;grid-template-columns:auto auto;gap:2px 16px;font-variant-numeric:tabular-nums">` +
+            `<span>현물가치</span><b style="text-align:right">${fmt(r[1])} USD</b>` +
+            `<span>환율</span><b style="text-align:right">${fmt(rowFx[i])}원</b>` +
+            `<span>원화 환산</span><b style="text-align:right">${k == null ? "–" : f0.format(k) + "원"}</b>` +
+            `<span>재고</span><b style="text-align:right">${fmt(r[3], 0)}톤</b></div>`;
+        },
+      },
+      xAxis: [0, 1, 2].map((g) => ({
+        type: "time", gridIndex: g, ...axisCommon, splitLine: { show: false },
+        axisLabel: g < 2 ? { show: false } : { color: muted, fontSize: 12, hideOverlap: true, formatter: { year: "{yyyy}년", month: "{M}월", day: "{M}/{d}" } },
+      })),
+      yAxis: [
+        { ...yCommon, gridIndex: 0, axisLabel: { color: muted, fontSize: 12, formatter: (v) => f0.format(v) } },
+        { ...yCommon, gridIndex: 1, splitNumber: 2, axisLabel: { color: muted, fontSize: 12, formatter: (v) => v >= 1e6 ? (v / 1e6).toFixed(1) + "M" : Math.round(v / 1e3) + "k" } },
+        { ...yCommon, gridIndex: 2, splitNumber: 2, axisLabel: { color: muted, fontSize: 12, formatter: (v) => f0.format(v) } },
+      ],
+      dataZoom: [{ type: "inside", xAxisIndex: [0, 1, 2], filterMode: "filter" }],
+      series: [
+        { name: "현물가치", type: "line", xAxisIndex: 0, yAxisIndex: 0, data: series(1), showSymbol: false, lineStyle: { width: 2.2, color: css("--cash") }, itemStyle: { color: css("--cash") },
+          areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: css("--cash") + "33" }, { offset: 1, color: css("--cash") + "00" }]) } },
+        { name: "재고", type: "line", xAxisIndex: 1, yAxisIndex: 1, data: series(3), showSymbol: false, connectNulls: true, lineStyle: { width: 1.8, color: css("--stock") }, itemStyle: { color: css("--stock") },
+          areaStyle: { color: css("--stock") + "22" } },
+        { name: "환율", type: "line", xAxisIndex: 2, yAxisIndex: 2, data: fxSeries, showSymbol: false, connectNulls: true, lineStyle: { width: 1.8, color: css("--fx") }, itemStyle: { color: css("--fx") },
+          areaStyle: { color: css("--fx") + "22" } },
+      ],
+    });
+    applyRange();
+  }
+
+  function applyRange() {
+    if (!chart || !rows.length) return;
+    const days = RANGES.find((r) => r[0] === range)[2];
+    const end = toDate(rows.at(-1)[0]).getTime();
+    const start = days ? end - days * 86400000 : toDate(rows[0][0]).getTime();
+    chart.dispatchAction({ type: "dataZoom", startValue: start, endValue: end });
+  }
+
+  function setRange(r) {
+    range = r;
+    document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.r === r));
+    applyRange();
+  }
+
+  function downloadCsv() {
+    const lines = ["일자,현물가치 (USD/t),원/달러 환율,원화 환산 현물가치 (원/t),재고 (t)",
+      ...rows.map((r, i) => [r[0], r[1], rowFx[i], krw(i) == null ? null : Math.round(krw(i)), r[3]].map((v) => v ?? "").join(","))];
+    const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `lme_aluminium_${rows.at(-1)[0]}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  function loadScript(url) {
+    return new Promise((resolve) => {
+      const el = document.createElement("script");
+      el.src = `${url}?t=${Date.now()}`;
+      el.onload = () => { el.remove(); resolve(true); };
+      el.onerror = () => { el.remove(); resolve(false); };
+      document.head.appendChild(el);
+    });
+  }
+
+  // 상태 파일을 먼저 보고, 데이터가 바뀐 경우에만 큰 데이터 파일을 다시 받음
+  async function load({ first = false } = {}) {
+    if (demo) return;
+    if (await loadScript(STATUS_URL)) status = window.LME_STATUS ?? null;
+    const known = status?.dataUpdatedAt;
+    const needData = first || !rows.length || !known || known !== lastUpdatedAt;
+    let changed = false;
+    if (needData) {
+      const ok = await loadScript(DATA_URL);
+      const d = ok ? window.LME_DATA : null;
+      if (!d || !d.rows?.length) {
+        if (first) renderEmpty(ok ? "데이터 파일이 비어 있습니다." : "데이터 파일(data/lme.js)을 찾지 못했습니다.");
+        return "empty";
+      }
+      changed = d.updatedAt !== lastUpdatedAt;
+      if (changed || demo) {
+        demo = false; $("#banner").innerHTML = "";
+        rows = d.rows; fxRows = d.fx ?? []; buildRowFx(); lastUpdatedAt = d.updatedAt;
+        render();
+        return "updated";
+      }
+    }
+    renderStatus();
+    return "same";
+  }
+
+  if (typeof echarts === "undefined") {
+    $("#app").innerHTML = `<section class="card empty"><h2>차트 도구를 불러오지 못했습니다</h2><p>인터넷 연결을 확인한 뒤 새로고침하세요. 회사 네트워크에서 cdn.jsdelivr.net이 막혀 있을 수 있습니다.</p></section>`;
+    return;
+  }
+
+  load({ first: true });
+  setInterval(() => load(), POLL_MS);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+  let t; window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(() => chart && (rows.length ? drawChart() : 0), 150); });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => rows.length && render());
+  if (new URLSearchParams(location.search).has("demo")) startDemo();
+})();
+</script>
+</body>
+</html>
