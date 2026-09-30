@@ -270,7 +270,12 @@ export async function main() {
   const fx = [...fxMap.values()].sort((a, b) => a[0].localeCompare(b[0]));
   console.log(`환율: ${fx.length}일` + (fx.length ? ` (${fx[0][0]} ~ ${fx.at(-1)[0]}, 최신 ${fx.at(-1)[1]}원)` : ""));
   for (const m of fxErrors) console.warn(m);
+  // "마지막 업데이트" 판단용: 최신 LME 값(가격·재고) 또는 최신 환율이 바뀌었는지
+  const tail = (a, n) => JSON.stringify(a.slice(-n));
+  const lmeChanged = tail(existing, 10) !== tail(rows, 10);
+  const fxLatestChanged = tail(existingFx, 3) !== tail(fx, 3);
   const fxStatus = {
+    lmeChanged, fxLatestChanged,
     fxOk: fxErrors.length === 0 || fx.some((r) => r[2] === "K"),
     fxMessage: fxErrors.join(" / ") || undefined,
     fxLatest: fx.at(-1)?.[0],
@@ -315,8 +320,12 @@ async function readStatus() {
 export async function run() {
   const checkedAt = new Date().toISOString();
   try {
+    const prev = await readStatus();
     const r = await main();
+    const lmeUpdatedAt = r.lmeChanged ? checkedAt : (prev.lmeUpdatedAt ?? r.updatedAt ?? checkedAt);
+    const fxUpdatedAt = r.fxLatestChanged ? checkedAt : (prev.fxUpdatedAt ?? r.updatedAt ?? checkedAt);
     await writeStatus({ checkedAt, ok: true, changed: r.changed, dataUpdatedAt: r.updatedAt, latest: r.latest,
+      lmeUpdatedAt, fxUpdatedAt,
       fxOk: r.fxOk, fxMessage: r.fxMessage, fxLatest: r.fxLatest, fxSource: r.fxSource,
       eximOk: r.eximOk, eximMessage: r.eximMessage });
   } catch (e) {
